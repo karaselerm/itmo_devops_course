@@ -16,6 +16,7 @@ x-airflow-common:
     - ./dags:/opt/airflow/dags
     - ./logs:/opt/airflow/logs
     - ./plugins:/opt/airflow/plugins
+    - ./spark:/opt/airflow/spark
   user: "${AIRFLOW_UID:-50000}:0"
 
 services:
@@ -32,6 +33,29 @@ services:
       interval: 10s
       retries: 5
       start_period: 5s
+    restart: always
+
+  spark-master:
+    container_name: spark-master
+    image: apache/spark:3.5.0
+    ports:
+      - "4040:8080"
+      - "7077:7077"
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: always
+
+  spark-worker:
+    container_name: spark-worker
+    image: apache/spark:3.5.0
+    depends_on:
+      spark-master:
+        condition: service_started
+    ports:
+      - "7000:7000"
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
     restart: always
 
   airflow-init:
@@ -51,6 +75,10 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      spark-master:
+        condition: service_started
+      spark-worker:
+        condition: service_started
     restart: "no"
 
   airflow-webserver:
@@ -67,6 +95,10 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      spark-master:
+        condition: service_started
+      spark-worker:
+        condition: service_started
       airflow-init:
         condition: service_completed_successfully
     restart: always
@@ -83,6 +115,10 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      spark-master:
+        condition: service_started
+      spark-worker:
+        condition: service_started
       airflow-init:
         condition: service_completed_successfully
     restart: always
