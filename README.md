@@ -2,7 +2,7 @@
 ## Тема: Airflow + Docker Compose
 
 ## Цель
-Развернуть Apache Airflow в Docker Compose и реализовать DAG сложнее `Hello world`.
+Развернуть Apache Airflow в Docker Compose и реализовать DAG.
 
 ## Состав
 - `Dockerfile`
@@ -30,7 +30,7 @@ docker compose exec -T airflow-webserver airflow dags list | grep sales_analytic
 
 ## Airflow UI
 - URL: `http://localhost:8080`
-- По умолчанию: `airflow / airflow`
+- По умолчанию авторизация: `airflow / airflow`
 
 ## Скриншоты
 ![Статусы контейнеров](./screenshots/ЛР_1_Docker_compose_ps.png)
