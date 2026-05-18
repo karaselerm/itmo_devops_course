@@ -1,82 +1,99 @@
-# Лабораторная работа №2
-## Тема: Airflow + Spark
+# Лабораторная работа №3
+## Тема: CI/CD для Airflow + Spark
 
 ## 1. Цель работы
-Подключить Apache Airflow к Apache Spark и выполнить Spark-задачу из DAG через `SparkSubmitOperator`.
+Добавить pipeline для проекта из ЛР2: тестирование структуры, сборку Docker-образа и деплой через Docker Compose.
 
-## 2. Содержимое репозитория
+## 2. Вариант реализации
+Вместо GitLab CI/CD используется GitHub Actions.
+
+## 3. Содержимое репозитория
+- `.github/workflows/lab3-ci.yml` — CI/CD pipeline.
 - `Dockerfile` — кастомный образ Airflow с зависимостями для Spark.
 - `docker-compose.yml` — сервисы Airflow, PostgreSQL, Spark master/worker.
 - `dags/spark_sales_pipeline.py` — DAG для запуска Spark-задачи.
-- `spark/sales_kpi_job.py` — PySpark-скрипт (SparkSession).
-- `CHANGES.md` — изменения относительно ЛР1.
-- `screenshots/` — скриншоты для отчётности.
+- `spark/sales_kpi_job.py` — PySpark-скрипт.
+- `CHANGES.md` — список изменений по лабораторным работам.
 
-## 3. Выполнение требований ЛР2
-### 3.1 Dockerfile
-- Базовый образ: `apache/airflow:2.7.1`.
-- `WORKDIR`: `/opt/airflow`.
-- Под `USER root` установлены системные пакеты `procps` и `default-jre`.
-- Возврат на `USER airflow` для корректной работы Airflow.
-- Установлены зависимости:
-  - `apache-airflow-providers-apache-spark==4.1.1`
-  - `pyspark==3.5.0`
-- Папка `spark` копируется в образ: `/opt/airflow/spark`.
+## 4. Pipeline
+Pipeline состоит из трех jobs:
+- `test`
+- `build`
+- `deploy`
 
-### 3.2 Docker Compose
-- Добавлены сервисы:
-  - `spark-master` (`container_name: spark-master`)
-  - `spark-worker` (`container_name: spark-worker`)
-- Для Airflow добавлено монтирование:
-  - `./spark:/opt/airflow/spark`
-- Выстроена очередность деплоя через `depends_on`:
-  - `postgres -> spark-master -> spark-worker -> airflow-init -> airflow-webserver/airflow-scheduler`
+### 4.1 Test
+Job `test` запускается во всех ветках.
 
-### 3.3 DAG и Spark-job
-- DAG `spark_sales_pipeline` использует `SparkSubmitOperator`.
-- Приложение запускается по пути `/opt/airflow/spark/sales_kpi_job.py`.
-- В `spark/sales_kpi_job.py` используется `SparkSession` и расчёт KPI по продажам.
+Проверяется:
+- наличие директории `dags/`;
+- наличие директории `spark/`;
+- наличие `Dockerfile`;
+- наличие `docker-compose.yml`;
+- валидность Docker Compose конфигурации.
 
-## 4. Запуск
+### 4.2 Build
+Job `build` запускается после `test`.
+
+Сборка не выполняется автоматически для веток с префиксом `feature/`.
+
+Собирается образ:
+```bash
+itmo-airflow-spark:lab3
+```
+
+### 4.3 Deploy
+Job `deploy` запускается после `build` автоматически только для веток:
+- `main`
+- `master`
+- `develop`
+
+Деплой выполняется командой:
 ```bash
 docker compose up -d --build
 ```
 
-## 5. Настройка Spark Connection в Airflow
-В Airflow UI: `Admin -> Connections -> +`.
+После проверки контейнеров окружение останавливается:
+```bash
+docker compose down -v
+```
 
-Параметры подключения:
-- Connection Id: `spark_local`
-- Connection Type: `Spark`
-- Host: `spark://spark-master`
-- Port: `7077`
+## 5. Runner
+Все jobs выполняются на runner с label:
+```bash
+ubuntu-latest
+```
 
-## 6. Проверка выполнения
-1. Проверить контейнеры:
+В GitHub Actions это задается через `runs-on`.
+
+## 6. Локальная проверка
+Проверить Docker Compose:
+```bash
+docker compose config -q
+```
+
+Собрать образ:
+```bash
+docker build -t itmo-airflow-spark:lab3 .
+```
+
+Запустить стек:
+```bash
+mkdir -p logs plugins
+chmod -R 777 logs plugins
+docker compose up -d --build
+```
+
+Если порт `8080` занят:
+```bash
+AIRFLOW_WEBSERVER_PORT=18080 docker compose up -d --build
+```
+
+Проверить контейнеры:
 ```bash
 docker compose ps
 ```
 
-2. Проверить, что DAG загружен:
+Остановить стек:
 ```bash
-docker compose exec -T airflow-webserver airflow dags list | grep spark_sales_pipeline
+docker compose down -v
 ```
-
-3. Запустить DAG `spark_sales_pipeline` в Airflow UI:
-- `http://localhost:8080`
-
-4. Проверить Spark UI:
-- `http://localhost:4040`
-- Должны быть видны `worker` и выполненная задача.
-
-## 7. Примечание по порту worker
-Во внешнем пробросе используется `7001:7000`.
-
-## 8. Скриншоты ЛР2
-1. Статус контейнеров после запуска:
-
-![ЛР2 docker compose ps](./screenshots/ЛР_2_Docker_compose_ps.png)
-
-2. Spark UI (master/worker и выполненные задачи):
-
-![ЛР2 Spark UI](./screenshots/ЛР_2_SparkAdmin.png)

@@ -1,0 +1,60 @@
+name: Lab 3 CI/CD
+
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+  workflow_dispatch:
+
+env:
+  AIRFLOW_IMAGE_NAME: itmo-airflow-spark:lab3
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check project structure
+        run: |
+          test -d dags
+          test -d spark
+          test -f Dockerfile
+          test -f docker-compose.yml
+          test -f dags/spark_sales_pipeline.py
+          test -f spark/sales_kpi_job.py
+
+      - name: Validate Docker Compose config
+        run: docker compose config -q
+
+  build:
+    runs-on: ubuntu-latest
+    needs: test
+    if: ${{ !startsWith(github.ref_name, 'feature/') && !startsWith(github.head_ref, 'feature/') }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Airflow image
+        run: docker build -t "$AIRFLOW_IMAGE_NAME" .
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    if: ${{ github.ref_name == 'main' || github.ref_name == 'master' || github.ref_name == 'develop' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare Airflow folders
+        run: |
+          mkdir -p logs plugins
+          sudo chmod -R 777 logs plugins
+
+      - name: Deploy stack
+        run: |
+          docker compose up -d --build
+          docker compose ps
+
+      - name: Stop stack
+        if: always()
+        run: docker compose down -v

@@ -15,3 +15,13 @@
 - В Airflow-сервисы добавлено монтирование `./spark:/opt/airflow/spark`.
 - Добавлен DAG `spark_sales_pipeline` на `SparkSubmitOperator`.
 - Добавлен spark-job `spark/sales_kpi_job.py` на `SparkSession`.
+
+## 2026-05-18 (ЛР3)
+- Добавлен GitHub Actions pipeline `.github/workflows/lab3-ci.yml`.
+- Добавлен stage `test` с проверкой директорий `dags/` и `spark/`, основных файлов проекта и Docker Compose конфигурации.
+- Добавлен stage `build` со сборкой образа `itmo-airflow-spark:lab3`.
+- Добавлен stage `deploy` с запуском проекта через `docker compose up -d --build`.
+- В deploy добавлена подготовка директорий `logs/` и `plugins/` для Airflow.
+- Для `deploy` добавлено ограничение на ветки `main`, `master`, `develop`.
+- Для `build` добавлено отключение автоматического запуска на ветках `feature/*`.
+- В `docker-compose.yml` добавлено имя образа Airflow `itmo-airflow-spark:lab3`.
