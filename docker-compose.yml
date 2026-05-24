@@ -43,7 +43,7 @@ services:
     ports:
       - "4040:8080"
       - "7077:7077"
-    command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
+    command: ["/bin/sh", "-c", "/opt/spark/bin/spark-class org.apache.spark.deploy.master.Master 2>&1 | tee -a /opt/spark/logs/spark-master.out"]
     volumes:
       - ./logs/spark-master:/opt/spark/logs
     depends_on:
@@ -59,7 +59,7 @@ services:
         condition: service_started
     ports:
       - "7001:7000"
-    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
+    command: ["/bin/sh", "-c", "/opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077 2>&1 | tee -a /opt/spark/logs/spark-worker.out"]
     volumes:
       - ./logs/spark-worker:/opt/spark/logs
     restart: always
