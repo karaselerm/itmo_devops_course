@@ -44,6 +44,8 @@ services:
       - "4040:8080"
       - "7077:7077"
     command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
+    volumes:
+      - ./logs/spark-master:/opt/spark/logs
     depends_on:
       postgres:
         condition: service_healthy
@@ -58,6 +60,8 @@ services:
     ports:
       - "7001:7000"
     command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
+    volumes:
+      - ./logs/spark-worker:/opt/spark/logs
     restart: always
 
   airflow-init:
@@ -123,6 +127,58 @@ services:
         condition: service_started
       airflow-init:
         condition: service_completed_successfully
+    restart: always
+
+  loki:
+    image: grafana/loki:3.2.0
+    container_name: loki
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    restart: always
+
+  alloy:
+    image: grafana/alloy:v1.5.1
+    container_name: alloy
+    depends_on:
+      loki:
+        condition: service_started
+    volumes:
+      - ./logs:/opt/logs
+      - ./alloy.conf:/etc/alloy/config.alloy
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - /etc/alloy/config.alloy
+    restart: always
+
+  prometheus:
+    image: prom/prometheus:v2.48.1
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    restart: always
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: grafana
+    ports:
+      - "${GRAFANA_PORT:-3030}:3000"
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      loki:
+        condition: service_started
+      prometheus:
+        condition: service_started
     restart: always
 
 volumes:
