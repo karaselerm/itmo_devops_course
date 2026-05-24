@@ -1,0 +1,16 @@
+.git
+.github
+.gitignore
+logs/
+plugins/
+screenshots/
+hw_tasks/
+*.md
+CHANGES.md
+README.md
+.DS_Store
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+.idea/
+.vscode/
