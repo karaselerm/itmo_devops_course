@@ -25,3 +25,6 @@
 - Для `deploy` добавлено ограничение на ветки `main`, `master`, `develop`.
 - Для `build` добавлено отключение автоматического запуска на ветках `feature/*`.
 - В `docker-compose.yml` добавлено имя образа Airflow `itmo-airflow-spark:lab3`.
+
+## 2026-05-24
+- Добавлена переменная окружения `AIRFLOW_CONN_SPARK_LOCAL=spark://spark-master:7077` в `airflow-common-env`, чтобы Airflow автоматически регистрировал Spark-коннект без ручного создания через UI.
